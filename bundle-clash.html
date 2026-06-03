@@ -4,15 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bundle Clash</title>
-
-<!-- ══ DEVICE ROUTER ══ -->
-<script>
-  // Automatically routes smartphone players to the mobile file layout
-  if (window.innerWidth <= 600 || /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    window.location.href = "bundle-clash.html";
-  }
-</script>
-
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
@@ -189,6 +180,109 @@
   .card.shake-card { animation: shakeCard 0.35s ease !important; border-color: #f72585 !important; }
 
   @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(8px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
+
+  /* ══════════════════════════════════════════
+     MOBILE RESPONSIVE — phones up to 600px
+  ══════════════════════════════════════════ */
+  @media (max-width: 600px) {
+
+    /* Login */
+    .login-box { width: 92vw; padding: 1.25rem; }
+    .logo h1 { font-size: 2.4rem; }
+
+    /* Game screen — stack vertically */
+    #gameScreen { height: 100dvh; }
+
+    .game-header {
+      padding: 0.5rem 0.75rem;
+      flex-wrap: wrap; gap: 0.4rem;
+    }
+    .game-header h2 { font-size: 1rem; }
+    .score-item .val { font-size: 1.2rem; }
+    .score-board { gap: 0.75rem; }
+    #myNameBadge { font-size: 0.72rem; }
+
+    /* Body becomes column: players bar on top, main below */
+    .game-body { flex-direction: column; }
+
+    /* Players panel becomes a horizontal scrolling strip at top */
+    .players-panel {
+      width: 100%;
+      flex-direction: row;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 0.5rem 0.75rem;
+      gap: 0.5rem;
+      border-right: none;
+      border-bottom: 1px solid #2a3a5c;
+      min-height: unset;
+    }
+    .players-panel h3 { display: none; }
+    .sidebar-bundles { display: none; }
+    .player-card {
+      min-width: 100px;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      padding: 0.4rem 0.6rem;
+    }
+    .player-card .pcards { font-size: 0.65rem; }
+
+    /* Main area fills remaining space */
+    .main-area { flex: 1; min-height: 0; }
+
+    /* Chat area */
+    .chat-messages { padding: 0.5rem 0.75rem; }
+    .chat-msg { font-size: 0.82rem; padding: 0.35rem 0.6rem; }
+    .chat-input-row { padding: 0.5rem 0.6rem; gap: 0.4rem; }
+    .chat-input-row input { font-size: 0.85rem; padding: 0.4rem 0.6rem; }
+    .small-btn { font-size: 0.82rem; padding: 0.4rem 0.6rem; }
+
+    /* Hand area — compact */
+    .hand-area {
+      padding: 0.5rem 0.75rem;
+      min-height: unset;
+    }
+    .hand-area h3 { font-size: 0.65rem; margin-bottom: 0.3rem; }
+    .hand-area > div { font-size: 0.65rem; margin-bottom: 0.3rem; }
+
+    /* Cards — smaller on mobile */
+    .card {
+      width: 40px;
+      height: 58px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+    }
+    .card .cnum { font-size: 1.05rem; }
+    .card .ccolor { font-size: 0.5rem; }
+    .cards-row { gap: 4px; }
+
+    /* Give picker modal */
+    .ask-picker-box { padding: 1.25rem; }
+    .ask-picker-box h3 { font-size: 1.1rem; }
+
+    /* Claim board modal */
+    .modal { width: 94vw; padding: 1.25rem; }
+
+    /* Lobby */
+    .lobby-box { padding: 1.25rem; }
+    .teams-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .room-code { font-size: 2rem; letter-spacing: 4px; }
+
+    /* Bundles modal shown as small bottom strip instead */
+    .sidebar-bundles-mobile {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 0.4rem 0.75rem;
+      border-top: 1px solid #2a3a5c;
+      background: var(--panel);
+    }
+    .bundle-item { font-size: 0.65rem; }
+  }
+
+  /* Show mobile bundles strip only on mobile */
+  .sidebar-bundles-mobile { display: none; }
+
   .card.red    { background: linear-gradient(135deg, #4a0820, #7a1030); color: #ff4d6d; border-color: #ff4d6d44; }
   .card.blue   { background: linear-gradient(135deg, #052a4a, #0a3a6a); color: #4cc9f0; border-color: #4cc9f044; }
   .card.green  { background: linear-gradient(135deg, #023a25, #045535); color: #06d6a0; border-color: #06d6a044; }
@@ -410,6 +504,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Mobile-only bundles strip -->
+      <div class="sidebar-bundles-mobile" id="bundlesStatusMobile"></div>
 
       <!-- Hand -->
       <div class="hand-area">
@@ -732,13 +829,19 @@ function renderGame(room) {
     pl.appendChild(div);
   });
 
-  // Bundles Status
+  // Bundles Status (sidebar + mobile strip)
   const bundlesEl = document.getElementById('bundlesStatus');
+  const bundlesMobileEl = document.getElementById('bundlesStatusMobile');
   bundlesEl.innerHTML = '';
+  bundlesMobileEl.innerHTML = '';
   COLORS.forEach(color => {
     ['low','high'].forEach(b => {
       const won = room.bundles && room.bundles[`${color}_${b}`];
-      if(won) bundlesEl.innerHTML += `<div class="bundle-item"><span class="bundle-label">${color.toUpperCase()} ${b==='low'?'0-5':'6-11'}</span><span class="${won==='A'?'bundle-won':'bundle-won-b'}">Team ${won}</span></div>`;
+      if(won) {
+        const html = `<div class="bundle-item"><span class="bundle-label">${color.toUpperCase()} ${b==='low'?'0-5':'6-11'}</span><span class="${won==='A'?'bundle-won':'bundle-won-b'}">Team ${won}</span></div>`;
+        bundlesEl.innerHTML += html;
+        bundlesMobileEl.innerHTML += html;
+      }
     });
   });
 
@@ -915,12 +1018,12 @@ async function submitInteractiveClaim() {
 
   if (isCorrect) {
     await executeClaimUpdate(color, bundle, myTeam, true);
-    await addChat("🏆 " + gameState.players[myId].name + " correctly claimed bundle " + bundleLabel + "! Team " + myTeam + " gets a point!", 'system');
+    await addChat(`🏆 ${gameState.players[myId].name} correctly claimed bundle ${bundleLabel}! Team ${myTeam} gets a point!`, 'system');
   } else {
     const enemyTeam = myTeam === 'A' ? 'B' : 'A';
     
     // Reveal who actually has the cards
-    let revealText = "❌ " + gameState.players[myId].name + " failed the claim! True locations:\n";
+    let revealText = `❌ ${gameState.players[myId].name} failed the claim! True locations:\n`;
     let locations = [];
     range.forEach(n => {
       let foundOwner = "No one (dropped)";
@@ -930,9 +1033,9 @@ async function submitInteractiveClaim() {
           break;
         }
       }
-      locations.push(color.toUpperCase() + " " + n + " ➔ " + foundOwner);
+      locations.push(`${color.toUpperCase()} ${n} ➔ ${foundOwner}`);
     });
-    revealText += locations.join('\n') + "\n\nAll " + bundleLabel + " cards have been automatically dropped. Team " + enemyTeam + " gets the point!";
+    revealText += locations.join('\n') + `\n\nAll ${bundleLabel} cards have been automatically dropped. Team ${enemyTeam} gets the point!`;
     
     await executeClaimUpdate(color, bundle, enemyTeam, false);
     await addChat(revealText, 'system');
@@ -1019,7 +1122,7 @@ function showGameOver(room) {
   showScreen('gameOverScreen');
   const a = room.scoreA || 0, b = room.scoreB || 0;
   document.getElementById('winnerText').textContent = a > b ? 'Team A Wins! 🎉' : b > a ? 'Team B Wins! 🎉' : "It's a Tie!";
-  document.getElementById('winnerSub').textContent = "Final Score — Team A: " + a + "  |  Team B: " + b;
+  document.getElementById('winnerSub').textContent = `Final Score — Team A: ${a}  |  Team B: ${b}`;
 }
 </script>
 </body>
